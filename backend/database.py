@@ -41,7 +41,7 @@ def init_database():
                 id              INTEGER PRIMARY KEY AUTOINCREMENT,
                 item_id         INTEGER NOT NULL,  -- FK: o item craftável
                 ingredient_id   INTEGER NOT NULL,  -- FK: o item usado como ingrediente
-                quantity        INTEGER NOT NULL,  -- Quantidade necessária na receita
+                quantities        INTEGER NOT NULL,  -- Quantidade necessária na receita
                 FOREIGN KEY (item_id)       REFERENCES items(id),
                 FOREIGN KEY (ingredient_id) REFERENCES items(id),
                 UNIQUE (item_id, ingredient_id)    -- Evita duplicatas dentro da mesma receita
@@ -79,7 +79,7 @@ def get_item_by_id(item_id: int) -> dict | None:
             cursor.execute("""
                 SELECT
                     ri.ingredient_id,
-                    ri.quantity,
+                    ri.quantities,
                     i.name  AS ingredient_name,
                     i.price AS ingredient_price
                 FROM recipe_ingredients ri
@@ -91,23 +91,9 @@ def get_item_by_id(item_id: int) -> dict | None:
             result["ingredients"] = []
 
         return result
-
-def get_item_by_name(name: str) -> dict | None:
-    """
-    Busca um item no cache pelo nome (busca exata).
-    Reutiliza get_item_by_id para não duplicar lógica.
-    """
-    with get_connection() as conn:
-        cursor = conn.cursor()
-        cursor.execute("SELECT id FROM items WHERE name = ?", (name,))
-        row = cursor.fetchone()
-
-    if row is None:
-        return None
-
-    return get_item_by_id(row[0])
-
+    
 def get_item_by_name_search(name_search: str) -> dict | None:
+
     """
     Busca um item no cache pelo nome (busca exata).
     Reutiliza get_item_by_id para não duplicar lógica.
@@ -122,21 +108,31 @@ def get_item_by_name_search(name_search: str) -> dict | None:
 
     return get_item_by_id(row[0])
 
-
-def is_item_cached(item_id: int) -> bool:
+def is_item_cached_by_item_id(item_id: int) -> bool:
     """Verifica rapidamente se o item já existe no banco."""
     with get_connection() as conn:
         cursor = conn.cursor()
         cursor.execute("SELECT 1 FROM items WHERE id = ?", (item_id,))
         return cursor.fetchone() is not None
 
-def is_item_cachedd(name_search: str) -> bool:
+def is_item_cached_by_name_search(name_search: str) -> bool:
     """Verifica rapidamente se o item já existe no banco."""
     with get_connection() as conn:
         cursor = conn.cursor()
         cursor.execute("SELECT 1 FROM items WHERE name_search = ?", (name_search,))
         return cursor.fetchone() is not None
     
+def get_igredient_by_item_id(item_id = int)-> list[dict]| None:
+    with get_connection() as conn:
+        cursor = conn.cursor()
+        cursor.execute("SELECT ingredient_id, quantities FROM recipe_ingredients WHERE item_id = ?", (item_id, ))
+        rows = cursor.fetchall()
+
+        if rows is None:
+            return None
+        
+        return [{"ingredient_id": row[0], "quantities": row[1]} for row in rows]
+
 # ─────────────────────────────────────────────
 #  ESCRITA
 # ─────────────────────────────────────────────
@@ -164,19 +160,19 @@ def save_ingredients(item_id: int, ingredients: list[dict]):
 
     Formato esperado:
         ingredients = [
-            {"ingredient_id": 123, "quantity": 5},
-            {"ingredient_id": 456, "quantity": 2},
+            {"ingredient_id": 123, "quantities": 5},
+            {"ingredient_id": 456, "quantities": 2},
         ]
     """
     with get_connection() as conn:
         conn.executemany("""
-            INSERT OR IGNORE INTO recipe_ingredients (item_id, ingredient_id, quantity)
-            VALUES (:item_id, :ingredient_id, :quantity)
+            INSERT OR IGNORE INTO recipe_ingredients (item_id, ingredient_id, quantities)
+            VALUES (:item_id, :ingredient_id, :quantities)
         """, [
             {
                 "item_id":       item_id,
                 "ingredient_id": i["ingredient_id"],
-                "quantity":      i["quantity"],
+                "quantities":      i["quantities"],
             }
             for i in ingredients
         ])
