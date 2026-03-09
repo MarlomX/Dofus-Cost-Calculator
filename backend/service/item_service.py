@@ -1,26 +1,25 @@
 from object.item import Item
-from repository.ingredient_repository import IgredientRepository
-from service.ingredient_service import IngredientService
+from object.ingredient import Ingredient
 
 class ItemService:
 
-    def mont_item(value = dict, recipe = dict) -> Item:  
+    def mont_item(value = dict, ingredients: list[Ingredient] = None) -> Item:  
+        """
+        Monta um objeto Item a partir de um dicionário de valores e uma lista de Ingredient.
 
-            item = Item(id= value.get("id"),
-                    name = value.get("name"),
-                    name_search= value.get("name_search"),
-                    level = value.get("level", "?"),
-                    price = value.get("price", 0),
-                    has_recipe= value.get("has_recipe"),
-                    ingredients = []
-                    )
-            
-            if item.has_recipe:
+        Parâmetros:
+            value       — dict com id, name, name_search, level, price, has_recipe
+            ingredients — lista de objetos Ingredient já montados (pode ser None ou [])
+        """
 
-                print("test")
-                for ingredient_values in recipe:
-                    ingredient = IngredientService.mont_service(ingredient_values["ingredient_ids"], ingredient_values["quantities"])
-                    print(ingredient)
-                    item.add_ingredient(ingredient)
+        item = Item(
+            id= value.get("id"),
+            name = value.get("name"),
+            name_search= value.get("name_search"),
+            level = value.get("level", "?"),
+            price = value.get("price", 0),
+            has_recipe= value.get("has_recipe"),
+            ingredients = ingredients if ingredients else []
+        )
 
-            return item
+        return item

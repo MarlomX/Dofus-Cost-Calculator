@@ -152,17 +152,14 @@ def save_item(item_id: int, name: str, name_search: str, level: int, price: int,
     print(f"[DB] Item salvo: {name} (id={item_id})")
 
 
-def save_ingredients(item_id: int, ingredients: list[dict]):
+def save_ingredients(item_id: int, ingredients: dict):
     """
     Salva os ingredientes de uma receita na tabela recipe_ingredients.
     IMPORTANTE: cada ingrediente já deve estar salvo em 'items' antes desta chamada,
     pois ingredient_id é FK para items.id.
 
     Formato esperado:
-        ingredients = [
-            {"ingredient_id": 123, "quantities": 5},
-            {"ingredient_id": 456, "quantities": 2},
-        ]
+            "item_id: 987", "ingredient_id": 123, "quantities": 5
     """
     with get_connection() as conn:
         conn.executemany("""

@@ -23,7 +23,7 @@ def display_item(item: Item) -> None:
             total_cost = 0
             
             for ingredient in item.ingredients:
-                item_ingredient = fetch_item_by_id(ingredient.item_id)
+                item_ingredient = fetch_item_by_id(ingredient.ingredient_id)
 
                 print(f"    • {ingredient.quantity} x  {item_ingredient.name} Preço: {item_ingredient.price} kamas (estimado)".replace(",", "."))
                 total_cost += item_ingredient.price * ingredient.quantity
