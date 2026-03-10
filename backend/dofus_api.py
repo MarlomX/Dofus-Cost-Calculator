@@ -8,6 +8,28 @@ from repository.ingredient_repository import IngredientRepository
 # URL base da API pública do DofusDB
 BASE_URL = "https://api.dofusdb.fr"
 
+def save_item_with_recipe(clean_item: dict, recipe: list[dict]) -> None:
+    """
+    Salva no banco os ingredientes como items
+    """
+    ingredients_to_save = []
+    for ing in recipe:
+        ingredient_id = ing["ingredient_id"]
+        quantity = ing["quantity"]
+        if not ItemRepository.search_item_by_id(id=ingredient_id):
+            fetch_item_by_id(ingredient_id)
+        ingredients_to_save.append({
+            "ingredient_id": ingredient_id,
+            "quantity": quantity
+        })
+
+    ItemRepository.save_in_db_from_dict(clean_item)
+
+    if ingredients_to_save:
+        IngredientRepository.save_ingredients(
+            item_id=clean_item["id"],
+            ingredients=ingredients_to_save
+        )
 
 def fetch_item_by_name_search(name_search: str) -> Item | None:
     """
@@ -18,8 +40,10 @@ def fetch_item_by_name_search(name_search: str) -> Item | None:
 
     name_search = normalize_name(name_search)
 
+
     # Tenta retornar do cache primeiro
     result = ItemRepository.search_item_by_name_search(name_search= name_search)
+
 
     if result:
         return result
@@ -46,33 +70,10 @@ def fetch_item_by_name_search(name_search: str) -> Item | None:
     clean_item = clear_item(api_item)
 
     #Busca a receita na API (Caso não tenha receita entrega uma lista vazia)
-    recipe = fetch_recipe(clean_item["id"]) if clean_item["has_recipe"] else []
+    recipe = fetch_recipe(item_id=clean_item["id"]) if clean_item["has_recipe"] else []
     
-    #Garante que cada ingrediente exista no banco antes de salvar a receita
-    ingredients_to_save = []
-    for ing in recipe:
-        ingredient_id = ing["ingredient_id"]
-        quantity = ing["quantity"]
-
-        # Busca o item-ingrediente na API caso ainda não esteja no cache
-        if not ItemRepository.search_item_by_id(id=ingredient_id):
-            fetch_item_by_id(ingredient_id)
-
-        ingredients_to_save.append({
-            "ingredient_id": ingredient_id,
-            "quantities": quantity
-        })
+    save_item_with_recipe(clean_item=clean_item, recipe=recipe)
     
-    #Salva o item principal no banco
-    ItemRepository.save_in_db_from_dict(clean_item)
-
-    #Salva os ingredientes da receita no banco
-    if ingredients_to_save:
-        IngredientRepository.save_ingredients(
-            item_id=clean_item["id"],
-            ingredients=ingredients_to_save
-        )
-
     # Monta e retorna o objeto Item com os ingredientes já preenchidos
     return ItemRepository.search_item_by_id(id = clean_item["id"])
 
@@ -108,46 +109,37 @@ def fetch_item_by_id(item_id: int) -> Item | None:
     
     clean_item = clear_item(api_item)
 
-    # Salva o ingrediente no banco (sem buscar receita — ingredientes simples não precisam)
-    ItemRepository.save_in_db_from_dict(clean_item)
+    # Busca a receita caso este ingrediente também seja craftável
+    recipe = fetch_recipe(item_id=clean_item["id"]) if clean_item["has_recipe"] else []
+
+    save_item_with_recipe(clean_item=clean_item, recipe=recipe)
 
     # Monta e retorna o objeto Item sem ingredientes (ingrediente não tem receita aqui)
     return ItemRepository.search_item_by_id(id=clean_item["id"])
 
-def fetch_recipe(item_id: int) -> list[dict] :
+def fetch_recipe(item_id: int) -> list[dict]:
     """
-    Busca a receita de craft de um item pelo seu ID.
-    Retorna lista de dicts com 'ingredient_id' e 'quantity', ou lista vazia.
-
-    Formato retornado:
-        [
-            {"ingredient_id": 123, "quantity": 5},
-            {"ingredient_id": 456, "quantity": 2},
-        ]
+    Busca a receita de craft de um item pelo ID do item (resultId).
+    Usa a rota /recipes?resultId={item_id} que retorna a receita cujo resultado é este item.
     """
-    url = f"{BASE_URL}/recipes"
-    params = {
-        "resultId": item_id,
-        "$select[]": ["ingredientIds", "quantities"]
-    }
-
-    response = requests.get(url, params=params)
+    url_recipe = f"{BASE_URL}/recipes"
+    response = requests.get(url_recipe, params={"resultId": item_id})
 
     if response.status_code != 200:
-        print(f"Erro ao buscar receita: {response.status_code}")
+        print(f"Erro ao buscar receita para item_id={item_id}: {response.status_code}")
         return []
 
     data = response.json()
 
-    if not data.get("data"):
+    # A rota retorna um wrapper com campo "data" contendo lista de receitas
+    recipes = data.get("data", [])
+    if not recipes:
         return []
-    
-    recipe_data = data["data"][0]
-    
-    ingredient_ids = recipe_data.get("ingredientIds", [])
-    quantities = recipe_data.get("quantities", [])
 
-    # Combina as duas listas em uma lista de dicts legível
+    recipe = recipes[0]
+    ingredient_ids = recipe.get("ingredientIds", [])
+    quantities = recipe.get("quantities", [])
+
     return [
         {"ingredient_id": ing_id, "quantity": qty}
         for ing_id, qty in zip(ingredient_ids, quantities)

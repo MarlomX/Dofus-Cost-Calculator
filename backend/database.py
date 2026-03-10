@@ -1,4 +1,5 @@
 import sqlite3
+from utils import normalize_name
 
 DB_PATH = "dofus_craft.db"
 
@@ -22,7 +23,6 @@ def init_database():
             CREATE TABLE IF NOT EXISTS items (
                 id          INTEGER PRIMARY KEY,   -- ID do item na API do DofusDB
                 name        TEXT NOT NULL,         -- Nome original Ex:"Maníaco menor"
-                name_search TEXT NOT NULL,         -- Nome normalizadp Ex:"maniaco menor"
                 level       INTEGER NOT NULL,
                 price       INTEGER NOT NULL,      -- Preço retornado pela API (pode estar desatualizado)
                 has_recipe  BOOLEAN NOT NULL
@@ -41,7 +41,7 @@ def init_database():
                 id              INTEGER PRIMARY KEY AUTOINCREMENT,
                 item_id         INTEGER NOT NULL,  -- FK: o item craftável
                 ingredient_id   INTEGER NOT NULL,  -- FK: o item usado como ingrediente
-                quantities        INTEGER NOT NULL,  -- Quantidade necessária na receita
+                quantity        INTEGER NOT NULL,  -- Quantidade necessária na receita
                 FOREIGN KEY (item_id)       REFERENCES items(id),
                 FOREIGN KEY (ingredient_id) REFERENCES items(id),
                 UNIQUE (item_id, ingredient_id)    -- Evita duplicatas dentro da mesma receita
@@ -79,7 +79,7 @@ def get_item_by_id(item_id: int) -> dict | None:
             cursor.execute("""
                 SELECT
                     ri.ingredient_id,
-                    ri.quantities,
+                    ri.quantity,
                     i.name  AS ingredient_name,
                     i.price AS ingredient_price
                 FROM recipe_ingredients ri
@@ -92,15 +92,13 @@ def get_item_by_id(item_id: int) -> dict | None:
 
         return result
     
-def get_item_by_name_search(name_search: str) -> dict | None:
-
-    """
-    Busca um item no cache pelo nome (busca exata).
-    Reutiliza get_item_by_id para não duplicar lógica.
-    """
+def get_item_by_name(name: str) -> dict | None:
     with get_connection() as conn:
         cursor = conn.cursor()
-        cursor.execute("SELECT id FROM items WHERE name_search = ?", (name_search,))
+        cursor.execute("""
+            SELECT id FROM items 
+            WHERE lower(name) = ?
+        """, (normalize_name(name),))
         row = cursor.fetchone()
 
     if row is None:
@@ -114,30 +112,23 @@ def is_item_cached_by_item_id(item_id: int) -> bool:
         cursor = conn.cursor()
         cursor.execute("SELECT 1 FROM items WHERE id = ?", (item_id,))
         return cursor.fetchone() is not None
-
-def is_item_cached_by_name_search(name_search: str) -> bool:
-    """Verifica rapidamente se o item já existe no banco."""
-    with get_connection() as conn:
-        cursor = conn.cursor()
-        cursor.execute("SELECT 1 FROM items WHERE name_search = ?", (name_search,))
-        return cursor.fetchone() is not None
     
-def get_igredient_by_item_id(item_id = int)-> list[dict]| None:
+def get_ingredient_by_item_id(item_id : int)-> list[dict]| None:
     with get_connection() as conn:
         cursor = conn.cursor()
-        cursor.execute("SELECT ingredient_id, quantities FROM recipe_ingredients WHERE item_id = ?", (item_id, ))
+        cursor.execute("SELECT ingredient_id, quantity FROM recipe_ingredients WHERE item_id = ?", (item_id, ))
         rows = cursor.fetchall()
 
         if rows is None:
             return None
         
-        return [{"ingredient_id": row[0], "quantities": row[1]} for row in rows]
+        return [{"ingredient_id": row[0], "quantity": row[1]} for row in rows]
 
 # ─────────────────────────────────────────────
 #  ESCRITA
 # ─────────────────────────────────────────────
 
-def save_item(item_id: int, name: str, name_search: str, level: int, price: int, has_recipe: bool):
+def save_item(item_id: int, name: str, level: int, price: int, has_recipe: bool):
     """
     Salva um item no cache.
     Usa INSERT OR IGNORE para não duplicar caso o item já exista.
@@ -145,9 +136,9 @@ def save_item(item_id: int, name: str, name_search: str, level: int, price: int,
     """
     with get_connection() as conn:
         conn.execute("""
-            INSERT OR IGNORE INTO items (id, name, name_search, level, price, has_recipe)
-            VALUES (?, ?, ?, ?, ?, ?)
-        """, (item_id, name, name_search, level, price, int(has_recipe)))
+            INSERT OR IGNORE INTO items (id, name, level, price, has_recipe)
+            VALUES (?, ?, ?, ?, ?)
+        """, (item_id, name, level, price, int(has_recipe)))
         conn.commit()
     print(f"[DB] Item salvo: {name} (id={item_id})")
 
@@ -159,17 +150,17 @@ def save_ingredients(item_id: int, ingredients: dict):
     pois ingredient_id é FK para items.id.
 
     Formato esperado:
-            "item_id: 987", "ingredient_id": 123, "quantities": 5
+            "item_id: 987", "ingredient_id": 123, "quantity": 5
     """
     with get_connection() as conn:
         conn.executemany("""
-            INSERT OR IGNORE INTO recipe_ingredients (item_id, ingredient_id, quantities)
-            VALUES (:item_id, :ingredient_id, :quantities)
+            INSERT OR IGNORE INTO recipe_ingredients (item_id, ingredient_id, quantity)
+            VALUES (:item_id, :ingredient_id, :quantity)
         """, [
             {
                 "item_id":       item_id,
                 "ingredient_id": i["ingredient_id"],
-                "quantities":      i["quantities"],
+                "quantity":      i["quantity"],
             }
             for i in ingredients
         ])

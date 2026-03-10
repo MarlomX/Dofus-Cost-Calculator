@@ -1,5 +1,4 @@
 from object.item import Item
-from dofus_api import fetch_item_by_id
 
 def display_item(item: Item) -> None:
     """
@@ -13,25 +12,16 @@ def display_item(item: Item) -> None:
     print(f"  Preço:  {item.price:,} kamas (estimado)".replace(",", "."))
 
     # Se tiver receita, busca e exibe os ingredientes
-    if item.has_recipe and item.id:
+    if item.has_recipe and item.ingredients:
         print("\n  Receita de Craft:")
+        total_cost = 0
+        for ingredient in item.ingredients:
+            print(f"    • {ingredient.quantity} x  {ingredient.name} Preço: {ingredient.price} kamas (estimado)".replace(",", "."))
+            total_cost += ingredient.price * ingredient.quantity
+        print(f"  Custo:  {total_cost:,} kamas (estimado)".replace(",", "."))
 
-        if len(item.ingredients) > 0:
-
-            print(f"  Buscando {len(item.ingredients)} ingrediente(s)...")
-
-            total_cost = 0
-            
-            for ingredient in item.ingredients:
-                item_ingredient = fetch_item_by_id(ingredient.ingredient_id)
-
-                print(f"    • {ingredient.quantity} x  {item_ingredient.name} Preço: {item_ingredient.price} kamas (estimado)".replace(",", "."))
-                total_cost += item_ingredient.price * ingredient.quantity
-            
-            print(f"  Custo:  {total_cost:,} kamas (estimado)".replace(",", "."))
-
-        else:
-            print("    Receita não encontrada.")
+    elif item.has_recipe:
+        print("    Receita não encontrada.")
     else:
         print("  Craft:  Não")
 
