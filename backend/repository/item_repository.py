@@ -13,7 +13,9 @@ class ItemRepository:
             name=values["name"],
             level=values["level"],
             price=values["price"],
-            has_recipe=values["has_recipe"]
+            has_recipe=values["has_recipe"],
+            type_name=values["type_name"],
+            super_type_name=values["super_type_name"]
         )
     
     def search_item_by_name_search(name_search : str) -> Item | None:

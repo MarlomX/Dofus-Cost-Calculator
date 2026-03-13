@@ -13,12 +13,14 @@ class ItemService:
         """
 
         item = Item(
-            id= value.get("id"),
+            id = value.get("id"),
             name = value.get("name"),
             level = value.get("level", "?"),
             price = value.get("price", 0),
             has_recipe= value.get("has_recipe"),
-            ingredients = ingredients if ingredients else []
+            ingredients = ingredients if ingredients else [],
+            type_name  = value.get("type_name", "Desconhecido"),
+            super_type_name = value.get("super_type_name", "Desconhecido")
         )
 
         return item

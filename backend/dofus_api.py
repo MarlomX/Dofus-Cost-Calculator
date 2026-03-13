@@ -10,17 +10,22 @@ BASE_URL = "https://api.dofusdb.fr"
 
 def save_item_with_recipe(clean_item: dict, recipe: list[dict]) -> None:
     """
-    Salva no banco os ingredientes como items
+    Salva no banco o item principal e seus ingredientes.
+    Cada ingrediente carrega o job_name vindo da receita.
     """
+
     ingredients_to_save = []
     for ing in recipe:
         ingredient_id = ing["ingredient_id"]
         quantity = ing["quantity"]
+        job_name = ing["job_name"]
+
         if not ItemRepository.search_item_by_id(id=ingredient_id):
             fetch_item_by_id(ingredient_id)
         ingredients_to_save.append({
             "ingredient_id": ingredient_id,
-            "quantity": quantity
+            "quantity": quantity,
+            "job_name": job_name,
         })
 
     ItemRepository.save_in_db_from_dict(clean_item)
@@ -77,7 +82,6 @@ def fetch_item_by_name_search(name_search: str) -> Item | None:
     # Monta e retorna o objeto Item com os ingredientes já preenchidos
     return ItemRepository.search_item_by_id(id = clean_item["id"])
 
-
 def fetch_item_by_id(item_id: int) -> Item | None:
     """
     Busca um item pelo ID na API do DofusDB.
@@ -117,6 +121,20 @@ def fetch_item_by_id(item_id: int) -> Item | None:
     # Monta e retorna o objeto Item sem ingredientes (ingrediente não tem receita aqui)
     return ItemRepository.search_item_by_id(id=clean_item["id"])
 
+def fetch_job(job_id: int) -> str:
+    """
+    Busca o nome da profissão pelo ID.
+    Retorna o nome em português ou 'Desconhecido' em caso de erro.
+    """
+    response = requests.get(f"{BASE_URL}/jobs/{job_id}")
+ 
+    if response.status_code != 200:
+        print(f"Erro ao buscar profissão job_id={job_id}: {response.status_code}")
+        return "Desconhecido"
+ 
+    data = response.json()
+    return data.get("name", {}).get("pt", "Desconhecido")
+
 def fetch_recipe(item_id: int) -> list[dict]:
     """
     Busca a receita de craft de um item pelo ID do item (resultId).
@@ -139,8 +157,10 @@ def fetch_recipe(item_id: int) -> list[dict]:
     recipe = recipes[0]
     ingredient_ids = recipe.get("ingredientIds", [])
     quantities = recipe.get("quantities", [])
+    job_name = fetch_job(recipe["jobId"]) if recipe.get("jobId") else "Desconhecido"
+
 
     return [
-        {"ingredient_id": ing_id, "quantity": qty}
+        {"ingredient_id": ing_id, "quantity": qty, "job_name": job_name}
         for ing_id, qty in zip(ingredient_ids, quantities)
     ]

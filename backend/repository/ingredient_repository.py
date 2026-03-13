@@ -18,9 +18,10 @@ class IngredientRepository:
         for value in item_data["ingredients"]:
             ingredient = Ingredient(
                 ingredient_id = value["ingredient_id"], 
-                quantity=value["quantity"],
-                name=value["ingredient_name"],
-                price=value["ingredient_price"]  
+                quantity = value["quantity"],
+                name = value["ingredient_name"],
+                price = value["ingredient_price"],
+                job_name = value["job_name"]
                 )
             ingredients.append(ingredient)
 

@@ -6,4 +6,4 @@ class Ingredient:
     name : str
     price : int
     quantity: int
-
+    job_name      : str

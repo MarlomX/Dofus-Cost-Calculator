@@ -21,11 +21,13 @@ def init_database():
         #Um item pode aparecer nos dois papéis ao mesmo tempo.
         cursor.execute("""
             CREATE TABLE IF NOT EXISTS items (
-                id          INTEGER PRIMARY KEY,   -- ID do item na API do DofusDB
-                name        TEXT NOT NULL,         -- Nome original Ex:"Maníaco menor"
-                level       INTEGER NOT NULL,
-                price       INTEGER NOT NULL,      -- Preço retornado pela API (pode estar desatualizado)
-                has_recipe  BOOLEAN NOT NULL
+                id              INTEGER PRIMARY KEY,   -- ID do item na API do DofusDB
+                name            TEXT NOT NULL,         -- Nome original Ex:"Maníaco menor"
+                level           INTEGER NOT NULL,
+                price           INTEGER NOT NULL,      -- Preço retornado pela API (pode estar desatualizado)
+                has_recipe      BOOLEAN NOT NULL,
+                type_name       TEXT NOT NULL,         -- Categoria do item Ex: "Troféu", "Pena", "Pelo"
+                super_type_name TEXT NOT NULL          -- Super categoria Ex: "Recurso", "Dofus / Troféu"
             )
         """)
 
@@ -42,6 +44,7 @@ def init_database():
                 item_id         INTEGER NOT NULL,  -- FK: o item craftável
                 ingredient_id   INTEGER NOT NULL,  -- FK: o item usado como ingrediente
                 quantity        INTEGER NOT NULL,  -- Quantidade necessária na receita
+                job_name        TEXT NOT NULL,     -- Profissão associada Ex: "Fabricante"
                 FOREIGN KEY (item_id)       REFERENCES items(id),
                 FOREIGN KEY (ingredient_id) REFERENCES items(id),
                 UNIQUE (item_id, ingredient_id)    -- Evita duplicatas dentro da mesma receita
@@ -80,6 +83,7 @@ def get_item_by_id(item_id: int) -> dict | None:
                 SELECT
                     ri.ingredient_id,
                     ri.quantity,
+                    ri.job_name,
                     i.name  AS ingredient_name,
                     i.price AS ingredient_price
                 FROM recipe_ingredients ri
@@ -128,7 +132,7 @@ def get_ingredient_by_item_id(item_id : int)-> list[dict]| None:
 #  ESCRITA
 # ─────────────────────────────────────────────
 
-def save_item(item_id: int, name: str, level: int, price: int, has_recipe: bool):
+def save_item(item_id: int, name: str, level: int, price: int, has_recipe: bool, type_name: str, super_type_name: str):
     """
     Salva um item no cache.
     Usa INSERT OR IGNORE para não duplicar caso o item já exista.
@@ -136,9 +140,9 @@ def save_item(item_id: int, name: str, level: int, price: int, has_recipe: bool)
     """
     with get_connection() as conn:
         conn.execute("""
-            INSERT OR IGNORE INTO items (id, name, level, price, has_recipe)
-            VALUES (?, ?, ?, ?, ?)
-        """, (item_id, name, level, price, int(has_recipe)))
+             INSERT OR IGNORE INTO items (id, name, level, price, has_recipe, type_name, super_type_name)
+            VALUES (?, ?, ?, ?, ?, ?, ?)
+        """, (item_id, name, level, price, int(has_recipe), type_name, super_type_name))
         conn.commit()
     print(f"[DB] Item salvo: {name} (id={item_id})")
 
@@ -154,13 +158,14 @@ def save_ingredients(item_id: int, ingredients: dict):
     """
     with get_connection() as conn:
         conn.executemany("""
-            INSERT OR IGNORE INTO recipe_ingredients (item_id, ingredient_id, quantity)
-            VALUES (:item_id, :ingredient_id, :quantity)
+            INSERT OR IGNORE INTO recipe_ingredients (item_id, ingredient_id, quantity, job_name)
+            VALUES (:item_id, :ingredient_id, :quantity, :job_name)
         """, [
             {
                 "item_id":       item_id,
                 "ingredient_id": i["ingredient_id"],
                 "quantity":      i["quantity"],
+                "job_name":      i["job_name"],
             }
             for i in ingredients
         ])

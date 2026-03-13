@@ -13,6 +13,8 @@ def clear_item(api_item):
     "name":        api_item["name"]["pt"],
     "level":       api_item["level"],
     "price":       api_item.get("price", 0),
-    "has_recipe":  api_item.get("hasRecipe", False)
+    "has_recipe":  api_item.get("hasRecipe", False),
+    "type_name":       api_item.get("type", {}).get("name", {}).get("pt", "Desconhecido"),
+    "super_type_name": api_item.get("type", {}).get("superType", {}).get("name", {}).get("pt","Desconhecido"),
 }
     

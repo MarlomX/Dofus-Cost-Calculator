@@ -10,11 +10,5 @@ class Item:
     price : int
     has_recipe : bool
     ingredients : list[Ingredient]
-
-
-
-
-
-    
-
-
+    type_name       : str
+    super_type_name : str
