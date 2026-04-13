@@ -50,5 +50,61 @@ class ItemRepository:
         # Busca os ingredientes no banco e passa para o serviço montar o Item
         ingredients = IngredientRepository.get_ingredients_by_item_id(values["id"])
         return ItemService.build_item(values, ingredients)
+    
+    def list_items(
+        super_type: str | None = None,
+        type: str | None = None,
+        job: str | None = None,
+        min_level: int | None = None,
+        max_level: int | None = None,
+        page: int = 1,
+        page_size: int = 10,
+    ) -> list[Item]:
+        """
+        Retorna lista paginada de itens craftáveis com filtros opcionais.
+        Monta o WHERE dinamicamente — só inclui a condição se o filtro foi passado.
+        """
+        conditions = ["has_recipe = 1"]  # base: só itens craftáveis
+        params = []
+
+        if super_type:
+            conditions.append("super_type_name = ?")
+            params.append(super_type)
+
+        if type:
+            conditions.append("type_name = ?")
+            params.append(type)
+
+        if min_level:
+            conditions.append("level >= ?")
+            params.append(min_level)
+
+        if max_level:
+            conditions.append("level <= ?")
+            params.append(max_level)
+
+        if job:
+            # job fica em recipe_ingredients → subquery necessária
+            conditions.append(
+                "id IN (SELECT item_id FROM recipe_ingredients WHERE job_name = ?)"
+            )
+            params.append(job)
+
+        where_clause = " AND ".join(conditions)
+        offset = (page - 1) * page_size
+        params.extend([page_size, offset])  # LIMIT e OFFSET vão por último
+
+        rows = database.list_items_filtered(where_clause, params)
+
+        items = []
+        for row in rows:
+            ingredients = IngredientRepository.get_ingredients_by_item_id(row["id"])
+            items.append(ItemService.build_item(row, ingredients))
+
+        return items
+
+    def update_price(item_id: int, price: int) -> None:
+        """Delega a atualização de preço para o database."""
+        database.update_item_price(item_id=item_id, price=price)
             
         

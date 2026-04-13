@@ -82,17 +82,20 @@ def fetch_item_by_name_search(name_search: str) -> Item | None:
     # Monta e retorna o objeto Item com os ingredientes já preenchidos
     return ItemRepository.search_item_by_id(id = clean_item["id"])
 
-def fetch_item_by_id(item_id: int) -> Item | None:
+def fetch_item_by_id(item_id: int, force_refresh: bool = False) -> Item | None:
     """
     Busca um item pelo ID na API do DofusDB.
     Primeiro verifica o cache local. Se não encontrar, busca na API e salva.
     Usado principalmente para buscar ingredientes de uma receita.
+    Se force_refresh=False, tenta o cache primeiro.
+    Se force_refresh=True, ignora o cache e re-busca na API (botão 'Atualizar').
     """
 
-    # Tenta retornar do cache primeiro
-    result = ItemRepository.search_item_by_id(id= item_id)
-    if result:
-        return result
+# Só usa o cache se não for um refresh forçado
+    if not force_refresh:
+        result = ItemRepository.search_item_by_id(id= item_id)
+        if result:
+            return result
 
     url = f"{BASE_URL}/items/{item_id}"
 
