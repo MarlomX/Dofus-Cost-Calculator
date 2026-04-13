@@ -1,4 +1,4 @@
-from object.item import Item
+from backend.object.item import Item
 
 def display_item(item: Item) -> None:
     """

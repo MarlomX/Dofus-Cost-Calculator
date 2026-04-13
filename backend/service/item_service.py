@@ -1,5 +1,5 @@
-from object.item import Item
-from object.ingredient import Ingredient
+from backend.object.item import Item
+from backend.object.ingredient import Ingredient
 
 class ItemService:
 

@@ -1,8 +1,8 @@
 import requests
-from utils import normalize_name, clear_item
-from object.item import Item
-from repository.item_repository import ItemRepository
-from repository.ingredient_repository import IngredientRepository
+from backend.utils import normalize_name, clear_item
+from backend.object.item import Item
+from backend.repository.item_repository import ItemRepository
+from backend.repository.ingredient_repository import IngredientRepository
 
 
 # URL base da API pública do DofusDB

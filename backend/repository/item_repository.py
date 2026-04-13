@@ -1,8 +1,8 @@
-import database
-from object.item import Item
-from service.item_service import ItemService
-from repository.ingredient_repository import IngredientRepository
-from utils import normalize_name
+from backend import database
+from backend.object.item import Item
+from backend.service.item_service import ItemService
+from backend.repository.ingredient_repository import IngredientRepository
+from backend.utils import normalize_name
 
 class ItemRepository:
 

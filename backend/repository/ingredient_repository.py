@@ -1,5 +1,5 @@
-import database
-from object.ingredient import Ingredient
+from backend import database
+from backend.object.ingredient import Ingredient
 
 class IngredientRepository:
       

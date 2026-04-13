@@ -1,5 +1,5 @@
 import sqlite3
-from utils import normalize_name
+from backend.utils import normalize_name
 
 DB_PATH = "dofus_craft.db"
 

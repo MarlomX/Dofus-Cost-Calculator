@@ -1,4 +1,4 @@
-from object.ingredient import Ingredient
+from backend.object.ingredient import Ingredient
 from dataclasses import dataclass
 
 @dataclass
